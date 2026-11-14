@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>YUMIN GRE Vocab Lab</title>
+<link rel="preload" href="words.json" as="fetch" crossorigin>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top"><div class="topin">
+  <div class="logo">YUMIN <span class="hl">GRE VOCAB LAB</span></div>
+  <nav class="nav">
+    <button class="btn alt" data-tab="home">홈</button>
+    <button class="btn alt" data-tab="cards">단어 카드</button>
+    <button class="btn alt" data-tab="test">단어 시험</button>
+    <button class="btn alt" data-tab="history">시험 기록</button>
+  </nav>
+</div></header>
+
+<main class="wrap">
+<section class="screen active" id="home">
+  <div class="hero">
+    <div class="eyebrow">13-WEEK GRE VERBAL STUDY PROGRAM</div>
+    <h1>Learn words by <span class="hl">meaning.</span></h1>
+    <p>동의어를 함께 익히는 GRE 어휘 학습실 · 뜻·발음·예문·암기 체크·시험 기록</p>
+  </div>
+  <div class="cards">
+    <button class="card" data-tab="cards"><span class="eyebrow">FLASH CARDS</span><h3>단어 카드</h3><p>주차별 학습 · 예문 확인 · 발음 듣기 · 오답 복습</p></button>
+    <button class="card" data-tab="test"><span class="eyebrow">PRACTICE TEST</span><h3>단어 시험</h3><p>10 / 30 / 50 / 100 / 200문항 · 동의어 정답 인정</p></button>
+    <button class="card" data-tab="history"><span class="eyebrow">PROGRESS</span><h3>내 학습 기록</h3><p>정답률 추이와 시험별 기록 · 브라우저 저장</p></button>
+  </div>
+  <p class="note">원본 934개 단어 자료 중 자동 추출·정리된 908개 항목을 포함해. 추출 누락·중복 및 의미 분류를 원문과 1:1로 완벽하게 검증한 버전은 아니야.</p>
+  <div class="syncbox">
+    <b>💾 학습 기록 백업</b>
+    <p class="tiny">기록은 이 기기 브라우저에 저장돼. 다른 기기로 옮기려면 백업 파일을 내보낸 뒤 그 기기에서 불러오면 기존 기록과 합쳐져.</p>
+    <div class="actions">
+      <button class="btn alt" id="export">백업 내보내기</button>
+      <label class="btn alt">백업 불러오기<input type="file" id="import" accept="application/json" hidden></label>
+      <span class="tiny" id="backup-msg"></span>
+    </div>
+  </div>
+</section>
+
+<section class="screen" id="cards">
+  <div class="eyebrow">FLASH CARDS</div><h1>GRE 단어 카드</h1>
+  <div class="controls">
+    <select class="field" id="week"></select>
+    <select class="field" id="card-mode">
+      <option value="all">전체 단어</option><option value="wrong">오답만</option><option value="unknown">아직 외우지 않은 단어</option>
+    </select>
+    <button class="btn alt" data-act="shuffle">무작위 섞기</button>
+  </div>
+  <div id="card-stat" class="tiny"></div>
+  <div class="progress"><div id="card-progress"></div></div>
+  <div id="card-reader"></div>
+  <div class="section-label">단어 검색</div>
+  <input class="field" id="word-search" placeholder="영단어 또는 뜻 검색">
+  <div class="wordlist" id="word-results"></div>
+</section>
+
+<section class="screen" id="test">
+  <div class="eyebrow">VOCAB QUIZ</div><h1>GRE 단어 시험</h1>
+  <div class="panel">
+    <div class="controls">
+      <label>범위 <select id="test-week" class="field"></select></label>
+      <label>문항 수 <select id="test-count" class="field"><option>10</option><option>30</option><option>50</option><option>100</option><option>200</option></select></label>
+      <button class="btn" data-act="start">시험 시작</button>
+    </div>
+    <p class="tiny">한국어 뜻을 보고 영어 단어를 입력하는 방식이야. 같은 뜻 그룹의 동의어도 인정하지만, 자동 의미 그룹화이므로 검토가 필요한 항목이 있을 수 있어.</p>
+  </div>
+  <div id="test-reader"></div>
+</section>
+
+<section class="screen" id="history">
+  <div class="eyebrow">LEARNING HISTORY</div><h1>학습 기록</h1>
+  <div id="history-reader"></div>
+</section>
+</main>
+
+<footer class="wrap foot">YUMIN GRE VOCAB LAB · Independent study app · 기록은 브라우저(localStorage)에 저장</footer>
+<script src="app.js" defer></script>
+</body>
+</html>

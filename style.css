@@ -1,0 +1,70 @@
+:root{--bg:#fff;--alt:#f5f5f7;--ink:#1d1d1f;--sub:#6e6e73;--line:#dedee4;--blue:#0071e3;--warm:#b64b1c;--grad:linear-gradient(100deg,#ff8a3d,#f5426c,#9b5cff)}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.75 -apple-system,BlinkMacSystemFont,'SF Pro Text','Pretendard Variable',Pretendard,'Malgun Gothic',sans-serif;letter-spacing:-.012em;word-break:keep-all}
+button,input,select{font:inherit}
+button{cursor:pointer}
+.wrap{max-width:1160px;margin:auto;padding:0 24px}
+
+.top{position:sticky;top:0;background:#fbfbfdeb;backdrop-filter:blur(16px);z-index:6;border-bottom:1px solid var(--line)}
+.topin{max-width:1160px;margin:auto;padding:10px 24px;display:flex;align-items:center;gap:15px;justify-content:space-between;flex-wrap:wrap}
+.logo{font-size:1rem;letter-spacing:-.035em;font-weight:800;white-space:nowrap}
+.hl{background:var(--grad);background-clip:text;-webkit-background-clip:text;color:transparent}
+.nav{display:flex;gap:5px;flex-wrap:wrap}
+
+.btn{border:0;border-radius:999px;background:var(--blue);color:#fff;padding:8px 17px;line-height:1.5;font-size:.88rem;display:inline-block}
+.btn:hover{filter:brightness(1.05)}
+.btn.alt{background:#e8e8ed;color:var(--ink)}
+
+.tiny{font-size:.78rem;color:var(--sub)}
+.muted{color:var(--sub)}
+h1,h2,h3{line-height:1.25;letter-spacing:-.03em}
+h1{font-size:clamp(2.25rem,5.5vw,4rem);margin:12px 0 14px}
+h2{font-size:1.65rem;margin:0 0 16px}
+h3{font-size:1.22rem}
+.eyebrow{font-size:.78rem;font-weight:750;letter-spacing:.12em;color:var(--warm)}
+.section-label{font-size:.75rem;letter-spacing:.09em;font-weight:750;color:var(--warm);margin:22px 0 8px}
+
+.hero{padding:66px 0 48px;text-align:center}
+.hero p{font-size:1.12rem;color:var(--sub);max-width:750px;margin:0 auto}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin:22px 0 30px}
+.card,.panel{background:var(--alt);border-radius:23px;padding:25px}
+.card{border:0;text-align:left;min-height:155px}
+.card:hover{box-shadow:0 8px 25px #0001}
+.card p{margin:6px 0;color:var(--sub);font-size:.89rem}
+.panel.white{background:#fff;border:1px solid var(--line)}
+.note{font-size:.84rem;color:var(--sub);background:#f7f7f8;border-radius:12px;padding:12px 15px}
+.syncbox{border:1px solid var(--line);border-radius:18px;padding:19px;margin:15px 0;background:#fafafb}
+
+.screen{display:none;padding:20px 0 80px}
+.screen.active{display:block}
+.actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.controls{display:flex;align-items:center;gap:10px;margin:12px 0 18px;flex-wrap:wrap}
+.controls .field{max-width:320px}
+.field{width:100%;border:1px solid var(--line);border-radius:12px;background:#fff;padding:10px 13px;outline:none}
+.field:focus{border-color:var(--blue)}
+.progress{height:7px;border-radius:20px;background:#e5e5eb;overflow:hidden;margin:14px 0 18px}
+.progress>div{height:100%;background:var(--grad);transition:width .2s}
+.chip{display:inline-block;background:#e9e9f0;border-radius:99px;padding:4px 11px;font-size:.73rem;font-weight:650}
+
+.word{font-weight:750;font-size:clamp(2rem,5vw,3rem);letter-spacing:-.03em;margin:17px 0 4px}
+.quiz-main{text-align:center;max-width:780px;margin:20px auto;background:var(--alt);padding:35px;border-radius:24px}
+.quiz-main .field{max-width:500px;margin:13px auto}
+.detail{text-align:left;margin-top:20px}
+.errors{text-align:left;max-height:360px;overflow:auto}
+.wordlist{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:15px}
+.wordlist button{text-align:left;padding:12px;border:1px solid var(--line);background:#fff;border-radius:12px}
+.wordlist small{display:block;color:var(--sub)}
+.statrow{display:flex;gap:8px;flex-wrap:wrap}
+.statrow span{background:var(--alt);padding:8px 12px;border-radius:10px;font-size:.84rem}
+.chart{display:flex;align-items:end;height:150px;gap:8px;border-bottom:1px solid var(--line)}
+.chart div{flex:1;background:linear-gradient(#9b5cff,#0071e3);border-radius:5px 5px 0 0}
+.foot{margin-top:25px;padding:25px 0;border-top:1px solid var(--line);color:var(--sub);font-size:.8rem}
+
+@media(max-width:780px){
+  .cards,.wordlist{grid-template-columns:1fr}
+  .hero{padding:42px 0 28px}
+  .wrap{padding:0 16px}
+  .topin{padding:10px 16px}
+  .quiz-main{padding:24px 16px}
+}
