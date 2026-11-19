@@ -128,10 +128,12 @@ function submitTest(skip) {
   const input = skip ? '' : $('answer').value.trim();
   const parts = input.split(/[,;\/]+/).map(x => x.trim()).filter(Boolean), accept = acceptedFor(i);
   const ok = parts.length > 0 && parts.every(x => accept.has(norm(x)));
-  const typo = !ok && parts.length === 1 ? typoOf(parts[0], i) : null;
+  const otherIdx = !ok && parts.length === 1 ? D.byNorm.get(norm(parts[0])) : undefined;
+  const other = otherIdx !== undefined && otherIdx !== i ? D.cards[otherIdx].w : null;
+  const typo = !ok && !other && parts.length === 1 ? typoOf(parts[0], i) : null;
   const viaSyn = ok && !parts.every(x => norm(x) === norm(c.w));
   if (ok) correct++; else wrong.add(c.w);
-  answers.push({ word: c.w, meaning: c.meaning, input, ok, typo, viaSyn });
+  answers.push({ word: c.w, meaning: c.meaning, input, ok, typo, other, viaSyn });
   qi++;
   if (qi >= quiz.length) return finishTest();
   persist(); renderTest();
@@ -143,7 +145,7 @@ function finishTest() {
   const typos = rec.errors.filter(x => x.typo).length, syns = answers.filter(x => x.viaSyn);
   const errRow = x => {
     const i = D.byWord.get(x.word.toLowerCase()), others = synInList(i).slice(0, 4);
-    return `<p><b>${esc(x.meaning)}</b><br>입력: ${esc(x.input || '(미입력)')}${x.typo ? ` <span class="tag typo">철자 오류 → ${esc(x.typo)}</span>` : ''}<br>정답: <b>${esc(x.word)}</b>${others.length ? ` <span class="muted">· 동의어도 정답: ${others.map(esc).join(', ')}</span>` : ''}</p>`;
+    return `<p><b>${esc(x.meaning)}</b><br>입력: ${esc(x.input || '(미입력)')}${x.typo ? ` <span class="tag typo">철자 오류 → ${esc(x.typo)}</span>` : ''}${x.other ? ` <span class="tag other">다른 단어: ${esc(x.other)} = ${esc(D.cards[D.byWord.get(x.other.toLowerCase())].meaning)}</span>` : ''}<br>정답: <b>${esc(x.word)}</b>${others.length ? ` <span class="muted">· 동의어도 정답: ${others.map(esc).join(', ')}</span>` : ''}</p>`;
   };
   $('test-reader').innerHTML = `<div class="quiz-main"><div class="eyebrow">TEST COMPLETE</div><h1>${score}점</h1><p>${quiz.length}문항 중 ${correct}개 정답${typos ? ` · 철자만 틀린 문제 ${typos}개` : ''}</p>
 ${syns.length ? `<p class="tiny">동의어로 맞힌 문제: ${syns.map(x => `${esc(x.input)} (= ${esc(x.word)})`).join(', ')}</p>` : ''}
@@ -208,6 +210,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id
   try { D = await (await fetch('words.json')).json(); }
   catch { $('card-reader').innerHTML = '<div class="panel">단어 파일(words.json)을 불러오지 못했어. 새로고침해 봐.</div>'; return; }
   D.byWord = new Map(D.cards.map((c, i) => [c.w.toLowerCase(), i]));
+  D.byNorm = new Map(D.cards.map((c, i) => [norm(c.w), i]));
   const opts = '<option value="0">전체 13주</option>' + D.weeks.map((w, i) => `<option value="${i + 1}">${i + 1}주 · ${esc(w)}</option>`).join('');
   $('week').innerHTML = $('test-week').innerHTML = opts;
   $('week').value = $('test-week').value = '1';
