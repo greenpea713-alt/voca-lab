@@ -15,23 +15,32 @@ function snapshot() { return { known: [...known], wrong: [...wrong], history: hi
 function persist() { try { localStorage.setItem(KEY, JSON.stringify(snapshot())); } catch {} }
 
 /* ---------- 데이터 ---------- */
-let D, KEYS; // KEYS[i] = 동의어 판정용 의미 키 (미리 계산)
-const semanticKey = s => String(s).split(/[;,\/·]/)[0].replace(/[()\[\]0-9]/g, '').replace(/\s+/g, '').trim();
-let synIndex; // "주차|의미키" → 영단어 목록
-
-function buildIndex() {
-  KEYS = D.cards.map(c => semanticKey(c.meaning));
-  synIndex = new Map();
-  D.cards.forEach((c, i) => {
-    if (KEYS[i].length < 2) return;
-    const k = c.week + '|' + KEYS[i];
-    (synIndex.get(k) || synIndex.set(k, []).get(k)).push(c.w.toLowerCase());
-  });
-}
+let D;
+// 비교용 정규화: 소문자, 악센트·공백·하이픈 제거 (bona fide = bona-fide = bonafide)
+const norm = s => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z]/g, '');
+// 정답 인정: 단어 자체 + words.json의 syn(같은 뜻 그룹 단어·대표 동의어)
 function acceptedFor(i) {
-  const c = D.cards[i], list = synIndex.get(c.week + '|' + KEYS[i]) || [];
-  return new Set([...list, c.w.toLowerCase()]);
+  const c = D.cards[i];
+  return new Set([c.w, ...(c.syn || [])].map(norm));
 }
+// 철자 거리(레벤슈타인)
+function editDist(a, b) {
+  const m = a.length, n = b.length; let prev = Array.from({ length: n + 1 }, (_, j) => j);
+  for (let i = 1; i <= m; i++) {
+    const cur = [i];
+    for (let j = 1; j <= n; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    prev = cur;
+  }
+  return prev[n];
+}
+// 한두 글자만 틀렸으면 의도한 단어를 돌려줌 (짧은 단어는 1글자, 긴 단어는 2글자까지)
+function typoOf(input, i) {
+  const x = norm(input), c = D.cards[i];
+  let best = null, bd = 99;
+  for (const w of [c.w, ...synInList(i)]) { const d = editDist(x, norm(w)); if (d < bd) { bd = d; best = w; } }
+  return bd > 0 && bd <= (norm(best).length <= 5 ? 1 : 2) ? best : null;
+}
+const synInList = i => (D.cards[i].syn || []).filter(w => D.byWord.has(w.toLowerCase()));
 
 /* ---------- 탭 ---------- */
 function tab(id) {
@@ -65,7 +74,7 @@ function renderCard() {
   const row = (label, v) => v ? `<p><strong>${label}</strong> ${esc(v)}</p>` : '';
   $('card-reader').innerHTML = `<div class="quiz-main"><span class="chip">WEEK ${c.week}</span><div class="word">${esc(c.w)}</div>
 <button class="btn alt" data-act="say">🔊 발음 듣기</button>
-${reveal ? `<div class="detail"><p><strong>발음</strong> ${esc(c.pron)} · ${esc(c.pos)}</p>${row('뜻', c.meaning)}${c.ex ? `<p>${esc(c.ex)}</p>` : ''}${c.ko ? `<p class="muted">${esc(c.ko)}</p>` : ''}${row('자주 쓰는 표현', c.combo)}${row('어원', c.etym)}</div>`
+${reveal ? `<div class="detail"><p><strong>발음</strong> ${esc(c.pron)} · ${esc(c.pos)}</p>${row('뜻', c.meaning)}${c.ex ? `<p>${esc(c.ex)}</p>` : ''}${c.ko ? `<p class="muted">${esc(c.ko)}</p>` : ''}${row('동의어', (c.syn || []).join(', '))}${row('자주 쓰는 표현', c.combo)}${row('어원', c.etym)}</div>`
  : '<p class="muted">뜻과 예문을 떠올려 봐.</p><button class="btn" data-act="reveal">해설 보기</button>'}
 <div class="actions" style="justify-content:center;margin-top:18px">
 <button class="btn alt" data-act="prev">← 이전</button><button class="btn alt" data-act="again">다시 보기</button>
@@ -116,11 +125,13 @@ function renderTest() {
 }
 function submitTest(skip) {
   const i = quiz[qi], c = D.cards[i];
-  const input = skip ? '' : $('answer').value.trim().toLowerCase();
+  const input = skip ? '' : $('answer').value.trim();
   const parts = input.split(/[,;\/]+/).map(x => x.trim()).filter(Boolean), accept = acceptedFor(i);
-  const ok = parts.length > 0 && parts.every(x => accept.has(x));
+  const ok = parts.length > 0 && parts.every(x => accept.has(norm(x)));
+  const typo = !ok && parts.length === 1 ? typoOf(parts[0], i) : null;
+  const viaSyn = ok && !parts.every(x => norm(x) === norm(c.w));
   if (ok) correct++; else wrong.add(c.w);
-  answers.push({ word: c.w, meaning: c.meaning, input, ok });
+  answers.push({ word: c.w, meaning: c.meaning, input, ok, typo, viaSyn });
   qi++;
   if (qi >= quiz.length) return finishTest();
   persist(); renderTest();
@@ -129,10 +140,17 @@ function finishTest() {
   const score = Math.round(correct / quiz.length * 100);
   const rec = { at: new Date().toISOString(), count: quiz.length, correct, score, week: +$('test-week').value, errors: answers.filter(x => !x.ok) };
   hist = [...hist, rec].slice(-100); persist();
-  $('test-reader').innerHTML = `<div class="quiz-main"><div class="eyebrow">TEST COMPLETE</div><h1>${score}점</h1><p>${quiz.length}문항 중 ${correct}개 정답</p>
-<div class="errors">${rec.errors.map(x => `<p><b>${esc(x.meaning)}</b><br>입력: ${esc(x.input || '(미입력)')} · 정답 예: ${esc(x.word)}</p>`).join('')}</div>
+  const typos = rec.errors.filter(x => x.typo).length, syns = answers.filter(x => x.viaSyn);
+  const errRow = x => {
+    const i = D.byWord.get(x.word.toLowerCase()), others = synInList(i).slice(0, 4);
+    return `<p><b>${esc(x.meaning)}</b><br>입력: ${esc(x.input || '(미입력)')}${x.typo ? ` <span class="tag typo">철자 오류 → ${esc(x.typo)}</span>` : ''}<br>정답: <b>${esc(x.word)}</b>${others.length ? ` <span class="muted">· 동의어도 정답: ${others.map(esc).join(', ')}</span>` : ''}</p>`;
+  };
+  $('test-reader').innerHTML = `<div class="quiz-main"><div class="eyebrow">TEST COMPLETE</div><h1>${score}점</h1><p>${quiz.length}문항 중 ${correct}개 정답${typos ? ` · 철자만 틀린 문제 ${typos}개` : ''}</p>
+${syns.length ? `<p class="tiny">동의어로 맞힌 문제: ${syns.map(x => `${esc(x.input)} (= ${esc(x.word)})`).join(', ')}</p>` : ''}
+<div class="errors">${rec.errors.map(errRow).join('')}</div>
 <button class="btn" data-act="start">다시 시험 보기</button></div>`;
   quiz = [];
+  $('test-reader').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 /* ---------- 기록 ---------- */
@@ -189,7 +207,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id
   $('card-reader').innerHTML = '<div class="panel">단어 불러오는 중…</div>';
   try { D = await (await fetch('words.json')).json(); }
   catch { $('card-reader').innerHTML = '<div class="panel">단어 파일(words.json)을 불러오지 못했어. 새로고침해 봐.</div>'; return; }
-  buildIndex();
+  D.byWord = new Map(D.cards.map((c, i) => [c.w.toLowerCase(), i]));
   const opts = '<option value="0">전체 13주</option>' + D.weeks.map((w, i) => `<option value="${i + 1}">${i + 1}주 · ${esc(w)}</option>`).join('');
   $('week').innerHTML = $('test-week').innerHTML = opts;
   $('week').value = $('test-week').value = '1';
