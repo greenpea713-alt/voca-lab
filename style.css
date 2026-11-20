@@ -73,5 +73,5 @@ h3{font-size:1.22rem}
 .tag{display:inline-block;font-size:.78rem;padding:1px 8px;border-radius:99px;margin-left:4px}
 .tag.typo{background:#fff1e6;color:#b64b1c}
 .tag.other{background:#eef3ff;color:#2a55c8}
-.cardnav{display:grid;grid-template-columns:1fr 1fr;gap:8px;max-width:420px;margin:10px auto 0}
-.cardnav .btn{padding:11px 0}
+.cardnav{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:10px}
+.cardnav.first{margin-top:18px}
