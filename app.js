@@ -163,9 +163,9 @@ function renderCard() {
   $('card-reader').innerHTML = `<div class="quiz-main"><span class="chip">WEEK ${c.week}</span><div class="word">${esc(c.w)}</div>
 <button class="btn alt" data-act="say">🔊 발음 듣기</button>
 ${reveal ? `<div class="detail"><p><strong>발음</strong> ${esc(c.pron)} · ${esc(c.pos)}</p>${row('뜻', c.meaning)}${c.ex ? `<p>${esc(c.ex)}</p>` : ''}${c.ko ? `<p class="muted">${esc(c.ko)}</p>` : ''}${row('동의어', (c.syn || []).join(', '))}${row('자주 쓰는 표현', c.combo)}${row('어원', c.etym)}</div>`
- : '<p class="muted">뜻과 예문을 떠올려 봐.</p><button class="btn" data-act="reveal">해설 보기</button>'}
-<div class="cardnav first"><button class="btn alt" data-act="prev">← 이전</button><button class="btn alt" data-act="next">다음 →</button></div>
-<div class="cardnav"><button class="btn alt" data-act="again">다시 보기</button><button class="btn" data-act="ok">✓ 외웠어요</button></div></div>`;
+ : '<p class="muted">뜻과 예문을 떠올려 봐.</p>'}
+<div class="cardnav first"><button class="btn alt" data-act="again">다시 보기</button><button class="btn" data-act="ok">✓ 외웠어요</button></div>
+<div class="cardnav"><button class="btn alt" data-act="prev">← 이전</button>${reveal ? '' : '<button class="btn" data-act="reveal">해설 보기</button>'}<button class="btn alt" data-act="next">다음 →</button></div></div>`;
 }
 function moveCard(n) { idx = (idx + n + indices.length) % indices.length; reveal = false; renderCard(); }
 function mark(ok) {
