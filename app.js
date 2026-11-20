@@ -42,6 +42,44 @@ function typoOf(input, i) {
 }
 const synInList = i => (D.cards[i].syn || []).filter(w => D.byWord.has(w.toLowerCase()));
 
+/* ---------- 영→한 채점: 뜻이 비슷하면 정답 ---------- */
+// 끝말(하다·한·적인·스러운 등)을 떼고 핵심 말만 남김: 냉소적인 → 냉소, 의심스러운 → 의심
+const KO_END = /(스러운|스럽다|스럽게|스레|적이다|적으로|적인|적|해지다|해진|하다|하는|하게|한|히|되다|되는|된|롭다|로운|이다|인|함|의|을|를|은|는|이|가|게|다)$/;
+// 원래 말과 끝말 뗀 말 두 가지를 모두 비교 후보로 씀 (부인 ↔ 부인하다)
+function stemsKo(s) {
+  const x = String(s).replace(/\([^)]*\)/g, '').replace(/~/g, '').replace(/[^가-힣a-z0-9]/gi, '');
+  const y = x.replace(KO_END, '');
+  return x ? [...new Set([x, y || x])] : [];
+}
+// 글자 두 개씩 묶어 겹치는 비율 (0~1)
+function dice(a, b) {
+  if (a.length < 2 || b.length < 2) return a === b ? 1 : 0;
+  const bg = s => { const m = new Map(); for (let i = 0; i < s.length - 1; i++) { const k = s.slice(i, i + 2); m.set(k, (m.get(k) || 0) + 1); } return m; };
+  const A = bg(a), B = bg(b); let hit = 0;
+  for (const [k, n] of A) hit += Math.min(n, B.get(k) || 0);
+  return 2 * hit / (a.length - 1 + b.length - 1);
+}
+const splitKo = t => String(t).split(/[,;·\/]+/).map(stemsKo).filter(a => a.length);
+const glossesOf = i => splitKo(D.cards[i].meaning);
+const same = (X, G) => X.some(x => G.includes(x));
+function koMatch(X, G) { return X.some(x => G.some(g => koMatch1(x, g))); }
+function koMatch1(x, g) {
+  if (x === g) return true;
+  if (Math.min(x.length, g.length) >= 2 && (x.includes(g) || g.includes(x))) return true;
+  return dice(x, g) >= 0.6;
+}
+// 결과: 'exact'(이 단어 뜻과 일치) · 'near'(비슷한 표현 또는 동의어의 뜻) · null(오답)
+function gradeKo(input, i) {
+  const parts = splitKo(input);
+  if (!parts.length) return null;
+  const own = glossesOf(i);
+  if (parts.some(x => own.some(g => same(x, g)))) return 'exact';
+  if (parts.some(x => own.some(g => koMatch(x, g)))) return 'near';
+  const synG = synInList(i).flatMap(w => glossesOf(D.byWord.get(w.toLowerCase())));
+  if (parts.some(x => synG.some(g => koMatch(x, g)))) return 'near';
+  return null;
+}
+
 /* ---------- 탭 ---------- */
 function tab(id) {
   document.querySelectorAll('.screen').forEach(e => e.classList.toggle('active', e.id === id));
@@ -105,20 +143,25 @@ function openWord(i) {
 }
 
 /* ---------- 시험 ---------- */
-let quiz = [], qi = 0, correct = 0, answers = [];
+let quiz = [], qi = 0, correct = 0, answers = [], dir = 'en', lastRec = null;
+const DIR_LABEL = { en: '한→영', ko: '영→한' };
 function startTest() {
   const week = +$('test-week').value, n = +$('test-count').value;
   const pool = [];
   D.cards.forEach((c, i) => { if (!week || c.week === week) pool.push(i); });
   if (!pool.length) return;
+  dir = $('test-dir').value;
   quiz = shuffle(pool).slice(0, n); qi = 0; correct = 0; answers = [];
   renderTest();
 }
 function renderTest() {
   $('test-reader').innerHTML = `<div class="quiz-main"><div class="tiny">${qi + 1}/${quiz.length}문항 · 현재 정답 ${correct}개</div>
 <div class="progress"><div style="width:${Math.round(qi / quiz.length * 100)}%"></div></div>
-<h2 style="margin:26px 0">${esc(D.cards[quiz[qi]].meaning)}</h2>
-<input class="field" id="answer" placeholder="영어 단어를 입력하세요" autocomplete="off" autocapitalize="off" spellcheck="false">
+${dir === 'ko'
+  ? `<div class="word">${esc(D.cards[quiz[qi]].w)}</div><div class="tiny">${esc(D.cards[quiz[qi]].pos)} · <button class="btn alt" data-act="sayq">🔊</button></div>
+<input class="field" id="answer" placeholder="한국어 뜻을 입력하세요" autocomplete="off" spellcheck="false">`
+  : `<h2 style="margin:26px 0">${esc(D.cards[quiz[qi]].meaning)}</h2>
+<input class="field" id="answer" placeholder="영어 단어를 입력하세요" autocomplete="off" autocapitalize="off" spellcheck="false">`}
 <div class="actions" style="justify-content:center"><button class="btn" data-act="submit">정답 확인 · 다음</button><button class="btn alt" data-act="skip">모름 · 다음</button></div>
 <div class="tiny" style="margin-top:16px">답 입력 후 엔터를 누르면 다음 문제로 넘어가.</div></div>`;
   $('answer').focus();
@@ -126,6 +169,15 @@ function renderTest() {
 function submitTest(skip) {
   const i = quiz[qi], c = D.cards[i];
   const input = skip ? '' : $('answer').value.trim();
+  if (dir === 'ko') {
+    const g = skip ? null : gradeKo(input, i), ok = !!g;
+    const prevWrong = wrong.has(c.w);
+    if (ok) correct++; else wrong.add(c.w);
+    answers.push({ word: c.w, meaning: c.meaning, input, ok, near: g === 'near', prevWrong });
+    qi++;
+    if (qi >= quiz.length) return finishTest();
+    persist(); return renderTest();
+  }
   const parts = input.split(/[,;\/]+/).map(x => x.trim()).filter(Boolean), accept = acceptedFor(i);
   const ok = parts.length > 0 && parts.every(x => accept.has(norm(x)));
   const otherIdx = !ok && parts.length === 1 ? D.byNorm.get(norm(parts[0])) : undefined;
@@ -140,8 +192,9 @@ function submitTest(skip) {
 }
 function finishTest() {
   const score = Math.round(correct / quiz.length * 100);
-  const rec = { at: new Date().toISOString(), count: quiz.length, correct, score, week: +$('test-week').value, errors: answers.filter(x => !x.ok) };
+  const rec = { at: new Date().toISOString(), count: quiz.length, correct, score, week: +$('test-week').value, dir, errors: answers.filter(x => !x.ok) };
   hist = [...hist, rec].slice(-100); persist();
+  if (dir === 'ko') { lastRec = rec; quiz = []; return renderKoResult(true); }
   const typos = rec.errors.filter(x => x.typo).length, syns = answers.filter(x => x.viaSyn);
   const errRow = x => {
     const i = D.byWord.get(x.word.toLowerCase()), others = synInList(i).slice(0, 4);
@@ -155,12 +208,33 @@ ${syns.length ? `<p class="tiny">동의어로 맞힌 문제: ${syns.map(x => `${
   $('test-reader').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+// 영→한 결과: 자동 채점이 놓친 답은 '맞은 걸로'로 바로잡을 수 있음
+function renderKoResult(scroll) {
+  const rec = lastRec, near = answers.filter(x => x.ok && x.near);
+  const errRow = (x, k) => `<p><b>${esc(x.word)}</b><br>입력: ${esc(x.input || '(미입력)')}${x.input ? ` <button class="btn alt tag" data-act="override" data-i="${k}">맞은 걸로</button>` : ''}<br>정답: <b>${esc(x.meaning)}</b></p>`;
+  $('test-reader').innerHTML = `<div class="quiz-main"><div class="eyebrow">TEST COMPLETE · 영→한</div><h1>${rec.score}점</h1><p>${rec.count}문항 중 ${rec.correct}개 정답</p>
+${near.length ? `<p class="tiny">비슷한 표현으로 맞힌 문제: ${near.map(x => `${esc(x.word)} → ${esc(x.input)} (사전 뜻: ${esc(x.meaning)})`).join(' · ')}</p>` : ''}
+${rec.errors.length ? '<p class="tiny">뜻은 맞는데 표현이 달라 오답 처리됐다면 \'맞은 걸로\'를 누르면 점수에 반영돼.</p>' : ''}
+<div class="errors">${answers.map((x, k) => x.ok ? '' : errRow(x, k)).join('')}</div>
+<button class="btn" data-act="start">다시 시험 보기</button></div>`;
+  if (scroll) $('test-reader').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function overrideKo(k) {
+  const x = answers[k];
+  if (!x || x.ok || !lastRec) return;
+  x.ok = true; x.near = true;
+  if (!x.prevWrong) wrong.delete(x.word);
+  lastRec.correct++; lastRec.score = Math.round(lastRec.correct / lastRec.count * 100);
+  lastRec.errors = answers.filter(a => !a.ok);
+  persist(); renderKoResult(false);
+}
+
 /* ---------- 기록 ---------- */
 function renderHistory() {
   const h = [...hist].reverse();
   $('history-reader').innerHTML = `<div class="statrow"><span>암기 표시 ${known.size}개</span><span>오답 ${wrong.size}개</span><span>완료 시험 ${h.length}회</span></div>
 <div class="panel white" style="margin-top:20px"><h3>점수 추이 (최근 20회)</h3><div class="chart">${hist.slice(-20).map(r => `<div title="${r.score}점" style="height:${Math.max(2, r.score)}%"></div>`).join('')}</div></div>
-${h.map(r => `<div class="panel" style="margin-top:11px"><strong>${new Date(r.at).toLocaleString('ko-KR')} · ${r.score}점</strong><div class="tiny">${r.count}문항 · 정답 ${r.correct}개 · ${r.week ? r.week + '주차' : '전체 범위'}</div></div>`).join('') || '<p class="muted">아직 시험 기록이 없어.</p>'}`;
+${h.map(r => `<div class="panel" style="margin-top:11px"><strong>${new Date(r.at).toLocaleString('ko-KR')} · ${r.score}점</strong><div class="tiny">${DIR_LABEL[r.dir || 'en']} · ${r.count}문항 · 정답 ${r.correct}개 · ${r.week ? r.week + '주차' : '전체 범위'}</div></div>`).join('') || '<p class="muted">아직 시험 기록이 없어.</p>'}`;
 }
 
 /* ---------- 백업 내보내기/불러오기 (기기 간 이동용) ---------- */
@@ -193,15 +267,17 @@ const ACTIONS = {
   prev: () => moveCard(-1), next: () => moveCard(1), ok: () => mark(true), again: () => mark(false),
   shuffle: () => { shuffle(indices); idx = 0; reveal = false; renderCard(); },
   start: startTest, submit: () => submitTest(false), skip: () => submitTest(true),
+  sayq: () => say(D.cards[quiz[qi]].w), override: b => overrideKo(+b.dataset.i),
 };
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-tab],[data-act],[data-word]');
   if (!b || !D) return;
   if (b.dataset.tab) tab(b.dataset.tab);
-  else if (b.dataset.act) ACTIONS[b.dataset.act]?.();
+  else if (b.dataset.act) ACTIONS[b.dataset.act]?.(b);
   else openWord(+b.dataset.word);
 });
-document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'answer') submitTest(false); });
+// 한글 입력 중(조합 중) 엔터는 무시: 크롬에서 엔터가 두 번 처리돼 다음 문제가 빈칸으로 넘어가는 것 방지
+document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'answer' && !e.isComposing && e.keyCode !== 229) submitTest(false); });
 
 /* ---------- 시작 ---------- */
 (async function init() {

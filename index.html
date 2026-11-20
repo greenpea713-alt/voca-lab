@@ -27,7 +27,7 @@
   </div>
   <div class="cards">
     <button class="card" data-tab="cards"><span class="eyebrow">FLASH CARDS</span><h3>단어 카드</h3><p>주차별 학습 · 예문 확인 · 발음 듣기 · 오답 복습</p></button>
-    <button class="card" data-tab="test"><span class="eyebrow">PRACTICE TEST</span><h3>단어 시험</h3><p>10 / 30 / 50 / 100 / 200문항 · 동의어 정답 인정</p></button>
+    <button class="card" data-tab="test"><span class="eyebrow">PRACTICE TEST</span><h3>단어 시험</h3><p>한→영 · 영→한 · 10~200문항 · 동의어 정답 인정</p></button>
     <button class="card" data-tab="history"><span class="eyebrow">PROGRESS</span><h3>내 학습 기록</h3><p>정답률 추이와 시험별 기록 · 브라우저 저장</p></button>
   </div>
   <p class="note">원본 934개 단어 자료 중 자동 추출·정리된 908개 항목을 포함해. 추출 누락·중복 및 의미 분류를 원문과 1:1로 완벽하게 검증한 버전은 아니야.</p>
@@ -63,11 +63,12 @@
   <div class="eyebrow">VOCAB QUIZ</div><h1>GRE 단어 시험</h1>
   <div class="panel">
     <div class="controls">
+      <label>방향 <select id="test-dir" class="field"><option value="en">한→영 (뜻 보고 영어 쓰기)</option><option value="ko">영→한 (영어 보고 뜻 쓰기)</option></select></label>
       <label>범위 <select id="test-week" class="field"></select></label>
       <label>문항 수 <select id="test-count" class="field"><option>10</option><option>30</option><option>50</option><option>100</option><option>200</option></select></label>
       <button class="btn" data-act="start">시험 시작</button>
     </div>
-    <p class="tiny">한국어 뜻을 보고 영어 단어를 입력하는 방식이야. 같은 뜻 그룹의 동의어(예: 과묵한 → taciturn, reticent)도 정답으로 인정해. 한두 글자만 틀리면 '철자 오류'로 따로 표시돼.</p>
+    <p class="tiny"><b>한→영</b>: 한국어 뜻을 보고 영어 단어를 입력해. 같은 뜻 그룹의 동의어(예: 과묵한 → taciturn, reticent)도 정답으로 인정하고, 한두 글자만 틀리면 '철자 오류'로 따로 표시돼.<br><b>영→한</b>: 영어 단어를 보고 한국어 뜻을 입력해. 끝말이 달라도(냉소적인 = 냉소적 = 냉소) 핵심 말이 같거나 비슷하면 정답이고, 같은 뜻 그룹 단어의 뜻도 인정해. 그래도 오답 처리된 답은 결과 화면에서 '맞은 걸로'를 눌러 바로잡을 수 있어.</p>
   </div>
   <div id="test-reader"></div>
 </section>
