@@ -32,8 +32,10 @@
   </div>
   <p class="note">원본 934개 단어 자료 중 자동 추출·정리된 908개 항목을 포함해. 추출 누락·중복 및 의미 분류를 원문과 1:1로 완벽하게 검증한 버전은 아니야.</p>
   <div class="syncbox">
-    <b>💾 학습 기록 백업</b>
-    <p class="tiny">기록은 이 기기 브라우저에 저장돼. 다른 기기로 옮기려면 백업 파일을 내보낸 뒤 그 기기에서 불러오면 기존 기록과 합쳐져.</p>
+    <b>☁️ 기록 동기화</b>
+    <div id="cloud"></div>
+    <b style="display:block;margin-top:14px">💾 백업 파일</b>
+    <p class="tiny">로그인 없이 쓸 때는 기록이 이 기기 브라우저에만 저장돼. 백업 파일을 내보낸 뒤 다른 기기에서 불러오면 기존 기록과 합쳐져.</p>
     <div class="actions">
       <button class="btn alt" id="export">백업 내보내기</button>
       <label class="btn alt">백업 불러오기<input type="file" id="import" accept="application/json" hidden></label>
@@ -79,7 +81,7 @@
 </section>
 </main>
 
-<footer class="wrap foot">YUMIN GRE VOCAB LAB · Independent study app · 기록은 브라우저(localStorage)에 저장</footer>
+<footer class="wrap foot">YUMIN GRE VOCAB LAB · Independent study app · 기록은 브라우저에 저장 · 로그인 시 클라우드 동기화</footer>
 <script src="app.js" defer></script>
 </body>
 </html>

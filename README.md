@@ -9,7 +9,15 @@
   - 한→영: 한국어 뜻 → 영어 입력, 동의어 그룹 정답 인정(`words.json`의 `syn`), 철자 오류 별도 표시
   - 영→한: 영어 단어 → 한국어 뜻 입력, 끝말 차이(냉소적인=냉소적=냉소)·비슷한 표현·동의어의 뜻 인정, 결과 화면에서 '맞은 걸로' 수동 정정
 - **학습 기록**: 점수 추이, 시험별 기록 (브라우저 localStorage 저장)
+- **클라우드 동기화**: 할 일 앱(TodoApp)과 같은 Firebase 프로젝트(`todoapp-41f4b`)·계정으로 로그인하면 기록을 Firestore `vocab/{uid}` 문서에 저장. 시험 기록은 합치고, 외운 단어·오답은 더 최근에 바뀐 쪽을 따름
 - **백업**: 기록을 JSON 파일로 내보내고 다른 기기에서 불러와 합치기
+
+### Firestore 보안 규칙 (Firebase 콘솔 > Firestore > 규칙에 추가)
+```
+match /vocab/{uid} {
+  allow read, write: if request.auth != null && request.auth.uid == uid;
+}
+```
 
 ## 파일 구조
 | 파일 | 역할 |

@@ -4,15 +4,65 @@ const esc = x => String(x ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 const KEY = 'yumin-gre-split-v1';
 
 /* ---------- 저장: 메모리는 Set, 저장은 배열(JSON) ---------- */
-let known = new Set(), wrong = new Set(), hist = [];
+let known = new Set(), wrong = new Set(), hist = [], stamp = 0; // stamp: 마지막으로 기록이 바뀐 시각
 function load() {
   try {
     const m = JSON.parse(localStorage.getItem(KEY) || '{}');
-    known = new Set(m.known || []); wrong = new Set(m.wrong || []); hist = m.history || [];
+    known = new Set(m.known || []); wrong = new Set(m.wrong || []); hist = m.history || []; stamp = m.stamp || 0;
   } catch {}
 }
-function snapshot() { return { known: [...known], wrong: [...wrong], history: hist }; }
-function persist() { try { localStorage.setItem(KEY, JSON.stringify(snapshot())); } catch {} }
+function snapshot() { return { known: [...known], wrong: [...wrong], history: hist, stamp }; }
+function saveLocal() { try { localStorage.setItem(KEY, JSON.stringify(snapshot())); } catch {} }
+function persist() { stamp = Date.now(); saveLocal(); scheduleCloud(); }
+
+/* ---------- 클라우드 동기화 (Firebase: 할 일 앱과 같은 프로젝트·계정) ---------- */
+// 브라우저에 공개되는 웹 설정값이라 비밀번호가 아님. 데이터 보호는 Firestore 보안 규칙(vocab/{uid})이 담당.
+const FB_CONFIG = {
+  apiKey: 'AIzaSyBt9Bangm-5IqMKnvkwIJtMbpFJVGwAVAM', authDomain: 'todoapp-41f4b.firebaseapp.com', projectId: 'todoapp-41f4b',
+  storageBucket: 'todoapp-41f4b.firebasestorage.app', messagingSenderId: '715703015424', appId: '1:715703015424:web:44a5940cf0e49a0517a0e5',
+};
+const FB_URL = 'https://www.gstatic.com/firebasejs/10.12.2/';
+let fb = null, user = null, cloudTimer;
+async function fbInit() {
+  if (fb) return fb;
+  const [A, U, F] = await Promise.all(['app', 'auth', 'firestore'].map(m => import(FB_URL + `firebase-${m}.js`)));
+  const app = A.initializeApp(FB_CONFIG);
+  fb = { U, F, auth: U.getAuth(app), db: F.getFirestore(app) };
+  return fb;
+}
+const cloudMsg = t => { const e = $('cloud-msg'); if (e) e.textContent = t; };
+const myDoc = () => fb.F.doc(fb.db, 'vocab', user.uid);
+function scheduleCloud() { if (user) { clearTimeout(cloudTimer); cloudTimer = setTimeout(pushCloud, 800); } }
+async function pushCloud() {
+  if (!user) return;
+  try { await fb.F.setDoc(myDoc(), snapshot()); cloudMsg('✓ 저장됨 ' + new Date().toLocaleTimeString('ko-KR')); }
+  catch (e) { cloudMsg('클라우드 저장 실패 (' + (e.code || e.message) + ')'); }
+}
+// 로그인 시: 시험 기록은 합치고, 외운 단어·오답 목록은 더 최근에 바뀐 쪽을 따름
+async function pullCloud() {
+  try {
+    const snap = await fb.F.getDoc(myDoc());
+    if (snap.exists()) {
+      const r = snap.data(), seen = new Set();
+      hist = [...hist, ...(r.history || [])].filter(x => x && !seen.has(x.at) && seen.add(x.at)).sort((a, b) => String(a.at).localeCompare(String(b.at))).slice(-100);
+      if ((r.stamp || 0) > stamp) { known = new Set(r.known || []); wrong = new Set(r.wrong || []); stamp = r.stamp; }
+      saveLocal();
+    }
+    await pushCloud();
+    if (D) { resetCards(); renderHistory(); }
+  } catch (e) { cloudMsg('클라우드 불러오기 실패 (' + (e.code || e.message) + ')'); }
+}
+function renderSync() {
+  $('cloud').innerHTML = user
+    ? `<p>☁️ <b>${esc(user.email)}</b>로 로그인됨 · 기록이 모든 기기에 자동 저장돼.</p><div class="actions"><button class="btn alt" data-act="logout">로그아웃</button><span class="tiny" id="cloud-msg"></span></div>`
+    : `<p class="tiny">로그인하면 기록이 클라우드에 저장돼서 폰·PC 어디서든 이어서 볼 수 있어. (할 일 앱과 같은 계정)</p>
+<div class="actions"><input class="field" id="login-email" type="email" placeholder="이메일" autocomplete="username" style="max-width:220px"><input class="field" id="login-pw" type="password" placeholder="비밀번호" autocomplete="current-password" style="max-width:160px"><button class="btn" data-act="login">로그인</button><span class="tiny" id="cloud-msg"></span></div>`;
+}
+async function login() {
+  try { await fbInit(); await fb.U.signInWithEmailAndPassword(fb.auth, $('login-email').value.trim(), $('login-pw').value); }
+  catch (e) { cloudMsg('로그인 실패: 이메일·비밀번호를 확인해 줘 (' + (e.code || e.message) + ')'); }
+}
+async function logout() { if (fb) await fb.U.signOut(fb.auth); }
 
 /* ---------- 데이터 ---------- */
 let D;
@@ -266,6 +316,7 @@ const ACTIONS = {
   say: () => say(D.cards[indices[idx]].w), reveal: () => { reveal = true; renderCard(); },
   prev: () => moveCard(-1), next: () => moveCard(1), ok: () => mark(true), again: () => mark(false),
   shuffle: () => { shuffle(indices); idx = 0; reveal = false; renderCard(); },
+  login, logout: () => logout(),
   start: startTest, submit: () => submitTest(false), skip: () => submitTest(true),
   sayq: () => say(D.cards[quiz[qi]].w), override: b => overrideKo(+b.dataset.i),
 };
@@ -277,6 +328,7 @@ document.addEventListener('click', e => {
   else openWord(+b.dataset.word);
 });
 // 한글 입력 중(조합 중) 엔터는 무시: 크롬에서 엔터가 두 번 처리돼 다음 문제가 빈칸으로 넘어가는 것 방지
+document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'login-pw') login(); });
 document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'answer' && !e.isComposing && e.keyCode !== 229) submitTest(false); });
 
 /* ---------- 시작 ---------- */
@@ -295,4 +347,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id
   $('export').onclick = exportBackup;
   $('import').onchange = e => e.target.files[0] && importBackup(e.target.files[0]);
   resetCards(); renderHistory();
+  renderSync();
+  try { await fbInit(); fb.U.onAuthStateChanged(fb.auth, u => { user = u; renderSync(); if (u) pullCloud(); }); }
+  catch { cloudMsg('클라우드 연결 실패 · 이 기기에만 저장 중'); }
 })();
