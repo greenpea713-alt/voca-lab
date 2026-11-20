@@ -75,3 +75,4 @@ h3{font-size:1.22rem}
 .tag.other{background:#eef3ff;color:#2a55c8}
 .cardnav{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:10px}
 .cardnav.first{margin-top:18px}
+.tag.basic{background:#eefaf0;color:#1f7a3a}

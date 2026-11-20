@@ -68,11 +68,12 @@ async function logout() { if (fb) await fb.U.signOut(fb.auth); }
 let D;
 // 비교용 정규화: 소문자, 악센트·공백·하이픈 제거 (bona fide = bona-fide = bonafide)
 const norm = s => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z]/g, '');
-// 정답 인정: 단어 자체 + words.json의 syn(같은 뜻 그룹 단어·대표 동의어)
+// 정답 인정: 단어 자체 + 같은 뜻 그룹의 GRE 단어(단어장에 있는 동의어)만
 function acceptedFor(i) {
-  const c = D.cards[i];
-  return new Set([c.w, ...(c.syn || [])].map(norm));
+  return new Set([D.cards[i].w, ...synInList(i)].map(norm));
 }
+// 단어장에 없는 쉬운 동의어(praise, hinder 등): 뜻은 맞지만 점수에는 미반영
+const basicFor = i => new Set((D.cards[i].syn || []).map(norm));
 // 철자 거리(레벤슈타인)
 function editDist(a, b) {
   const m = a.length, n = b.length; let prev = Array.from({ length: n + 1 }, (_, j) => j);
@@ -231,10 +232,11 @@ function submitTest(skip) {
   const ok = parts.length > 0 && parts.every(x => accept.has(norm(x)));
   const otherIdx = !ok && parts.length === 1 ? D.byNorm.get(norm(parts[0])) : undefined;
   const other = otherIdx !== undefined && otherIdx !== i ? D.cards[otherIdx].w : null;
-  const typo = !ok && !other && parts.length === 1 ? typoOf(parts[0], i) : null;
+  const basic = !ok && parts.length > 0 && parts.every(x => accept.has(norm(x)) || basicFor(i).has(norm(x)));
+  const typo = !ok && !other && !basic && parts.length === 1 ? typoOf(parts[0], i) : null;
   const viaSyn = ok && !parts.every(x => norm(x) === norm(c.w));
   if (ok) correct++; else wrong.add(c.w);
-  answers.push({ word: c.w, meaning: c.meaning, input, ok, typo, other, viaSyn });
+  answers.push({ word: c.w, meaning: c.meaning, input, ok, typo, other, viaSyn, basic });
   qi++;
   if (qi >= quiz.length) return finishTest();
   persist(); renderTest();
@@ -244,12 +246,12 @@ function finishTest() {
   const rec = { at: new Date().toISOString(), count: quiz.length, correct, score, week: +$('test-week').value, dir, errors: answers.filter(x => !x.ok) };
   hist = [...hist, rec].slice(-100); persist();
   if (dir === 'ko') { lastRec = rec; quiz = []; return renderKoResult(true); }
-  const typos = rec.errors.filter(x => x.typo).length, syns = answers.filter(x => x.viaSyn);
+  const typos = rec.errors.filter(x => x.typo).length, basics = rec.errors.filter(x => x.basic).length, syns = answers.filter(x => x.viaSyn);
   const errRow = x => {
     const i = D.byWord.get(x.word.toLowerCase()), others = synInList(i).slice(0, 4);
-    return `<p><b>${esc(x.meaning)}</b><br>입력: ${esc(x.input || '(미입력)')}${x.typo ? ` <span class="tag typo">철자 오류 → ${esc(x.typo)}</span>` : ''}${x.other ? ` <span class="tag other">다른 단어: ${esc(x.other)} = ${esc(D.cards[D.byWord.get(x.other.toLowerCase())].meaning)}</span>` : ''}<br>정답: <b>${esc(x.word)}</b>${others.length ? ` <span class="muted">· 동의어도 정답: ${others.map(esc).join(', ')}</span>` : ''}</p>`;
+    return `<p><b>${esc(x.meaning)}</b><br>입력: ${esc(x.input || '(미입력)')}${x.basic ? ' <span class="tag basic">뜻은 맞음 · GRE 단어로 써보세요</span>' : ''}${x.typo ? ` <span class="tag typo">철자 오류 → ${esc(x.typo)}</span>` : ''}${x.other ? ` <span class="tag other">다른 단어: ${esc(x.other)} = ${esc(D.cards[D.byWord.get(x.other.toLowerCase())].meaning)}</span>` : ''}<br>정답: <b>${esc(x.word)}</b>${others.length ? ` <span class="muted">· 동의어도 정답: ${others.map(esc).join(', ')}</span>` : ''}</p>`;
   };
-  $('test-reader').innerHTML = `<div class="quiz-main"><div class="eyebrow">TEST COMPLETE</div><h1>${score}점</h1><p>${quiz.length}문항 중 ${correct}개 정답${typos ? ` · 철자만 틀린 문제 ${typos}개` : ''}</p>
+  $('test-reader').innerHTML = `<div class="quiz-main"><div class="eyebrow">TEST COMPLETE</div><h1>${score}점</h1><p>${quiz.length}문항 중 ${correct}개 정답${typos ? ` · 철자만 틀린 문제 ${typos}개` : ''}${basics ? ` · 쉬운 단어로 쓴 문제 ${basics}개` : ''}</p>
 ${syns.length ? `<p class="tiny">동의어로 맞힌 문제: ${syns.map(x => `${esc(x.input)} (= ${esc(x.word)})`).join(', ')}</p>` : ''}
 <div class="errors">${rec.errors.map(errRow).join('')}</div>
 <button class="btn" data-act="start">다시 시험 보기</button></div>`;
