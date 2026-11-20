@@ -76,3 +76,19 @@ h3{font-size:1.22rem}
 .cardnav{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:10px}
 .cardnav.first{margin-top:18px}
 .tag.basic{background:#eefaf0;color:#1f7a3a}
+#card-reader{scroll-margin-top:70px}
+@media(max-width:780px){
+  /* 단어 카드 화면: 모바일에서 스크롤 줄이기 */
+  #cards>.eyebrow,#cards>h1{display:none}
+  .card-controls{display:grid;grid-template-columns:1fr 1fr auto;gap:6px;margin:4px 0 6px}
+  .card-controls .field{padding:7px 9px;font-size:.88rem}
+  .card-controls .btn{padding:7px 12px;font-size:.82rem}
+  #cards .progress{margin:6px 0 10px}
+  #card-reader .quiz-main{margin:8px auto;padding:16px 16px 18px}
+  #card-reader .word{margin:8px 0 2px;font-size:2.1rem}
+  #card-reader .detail{margin-top:10px;font-size:.93rem;line-height:1.55}
+  #card-reader .detail p{margin:0 0 7px}
+  #card-reader p.muted{margin:8px 0}
+  .cardnav.first{margin-top:12px}
+  .cardnav{margin-top:8px}
+}

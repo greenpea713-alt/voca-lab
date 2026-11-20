@@ -168,7 +168,9 @@ ${reveal ? `<div class="detail"><p><strong>발음</strong> ${esc(c.pron)} · ${e
 <div class="cardnav first"><button class="btn alt" data-act="again">다시 보기</button><button class="btn" data-act="ok">✓ 외웠어요</button></div>
 <div class="cardnav"><button class="btn alt" data-act="prev">← 이전</button>${reveal ? '' : '<button class="btn" data-act="reveal">해설 보기</button>'}<button class="btn alt" data-act="next">다음 →</button></div></div>`;
 }
-function moveCard(n) { idx = (idx + n + indices.length) % indices.length; reveal = false; renderCard(); }
+function moveCard(n) { idx = (idx + n + indices.length) % indices.length; reveal = false; renderCard(); keepCardInView(); }
+// 카드를 넘길 때 카드 윗부분이 화면 밖이면 카드 시작점으로 올려줌 (스크롤 덜 하게)
+function keepCardInView() { const r = $('card-reader').getBoundingClientRect(); if (r.top < 60) $('card-reader').scrollIntoView({ block: 'start' }); }
 function mark(ok) {
   const w = D.cards[indices[idx]].w;
   if (ok) { known.add(w); wrong.delete(w); } else { wrong.add(w); known.delete(w); }
